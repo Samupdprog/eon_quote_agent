@@ -124,6 +124,7 @@ def handle_user_request(
             action=intent.action,
             error=str(exc),
             summary=f"No encontré el presupuesto {intent.quote_id}.",
+            details=exc.details,
         )
     except QuoteEngineError as exc:
         return EONResult(
@@ -131,6 +132,7 @@ def handle_user_request(
             action=intent.action,
             error=str(exc),
             summary="Error al conectar con el motor de presupuestos.",
+            details=exc.details,
         )
 
     return EONResult(
@@ -187,10 +189,15 @@ def _summarize_search(data: object, client_name: str | None) -> str:
 
 def _build_workflow_payload(intent, files: list[str]) -> dict:
     return {
-        "client_name": intent.client_name,
-        "project_type": intent.project_type,
-        "tags": intent.tags,
-        "supplier_files": files,
+        "input_path": files[0],
+        "quote_id": None,
         "created_by": "EON",
         "source": "eon",
+        "status": "draft",
+        "project_type": intent.project_type,
+        "tags": intent.tags,
+        "generate_report": True,
+        "export_holded": True,
+        "report_output_path": None,
+        "holded_output_path": None,
     }

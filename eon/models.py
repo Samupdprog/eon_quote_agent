@@ -36,3 +36,4 @@ class EONResult:
     summary: str = ""
     questions: list[ClarifyingQuestion] = field(default_factory=list)
     error: str = ""
+    details: dict = field(default_factory=dict)

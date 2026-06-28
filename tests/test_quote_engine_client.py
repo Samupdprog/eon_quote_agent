@@ -15,6 +15,19 @@ def _mock_response(json_data, status_code=200):
     return mock
 
 
+def _mock_error_response(json_data, status_code):
+    """Mock que hace que raise_for_status() lance HTTPStatusError."""
+    mock = MagicMock(spec=httpx.Response)
+    mock.status_code = status_code
+    mock.json.return_value = json_data
+    mock.raise_for_status.side_effect = httpx.HTTPStatusError(
+        f"{status_code} Error",
+        request=MagicMock(),
+        response=mock,
+    )
+    return mock
+
+
 class TestQuoteEngineClient:
     def setup_method(self):
         self.client = QuoteEngineClient(base_url="http://test-engine:8000")
@@ -75,3 +88,26 @@ class TestQuoteEngineClient:
         with patch("httpx.post", return_value=_mock_response(payload)):
             result = self.client.archive_quote("PRE-2026-0001")
         assert result["archived"] is True
+
+    def test_http_422_raises_quote_engine_error(self):
+        """HTTP 422 del motor se convierte en QuoteEngineError, no en traceback."""
+        detail = {"detail": [{"msg": "field required", "loc": ["body", "input_path"]}]}
+        mock = _mock_error_response(detail, 422)
+        with patch("httpx.post", return_value=mock):
+            with pytest.raises(QuoteEngineError, match="422"):
+                self.client.run_workflow({})
+
+    def test_http_422_includes_details(self):
+        """Los details de FastAPI quedan accesibles en el error."""
+        detail = {"detail": [{"msg": "field required"}]}
+        mock = _mock_error_response(detail, 422)
+        with patch("httpx.post", return_value=mock):
+            with pytest.raises(QuoteEngineError) as exc_info:
+                self.client.run_workflow({})
+        assert exc_info.value.details == detail
+
+    def test_http_500_raises_quote_engine_error(self):
+        mock = _mock_error_response({"detail": "Internal Server Error"}, 500)
+        with patch("httpx.get", return_value=mock):
+            with pytest.raises(QuoteEngineError, match="500"):
+                self.client.get_tools()

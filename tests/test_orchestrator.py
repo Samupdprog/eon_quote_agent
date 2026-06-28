@@ -88,3 +88,32 @@ class TestOrchestrator:
         result = handle_user_request("hola qué tal", client=client)
         assert result.success is False
         assert result.action == "unknown"
+
+    def test_create_with_file_payload_has_input_path(self):
+        """El payload enviado al workflow debe contener input_path con la ruta del archivo."""
+        client = _mock_client()
+        handle_user_request(
+            "hazme un presupuesto para Citanias",
+            files=["data/input.json"],
+            client=client,
+        )
+        payload = client.run_workflow.call_args[0][0]
+        assert "input_path" in payload
+        assert payload["input_path"] == "data/input.json"
+        assert "supplier_files" not in payload
+
+    def test_http_error_returns_controlled_failure(self):
+        """Un error HTTP 422 del motor se muestra como EONResult controlado, sin traceback."""
+        client = _mock_client()
+        client.run_workflow.side_effect = QuoteEngineError(
+            "Error HTTP 422 en /workflow/quote",
+            details={"detail": [{"msg": "field required", "loc": ["body", "input_path"]}]},
+        )
+        result = handle_user_request(
+            "hazme un presupuesto para Citanias",
+            files=["data/input.json"],
+            client=client,
+        )
+        assert result.success is False
+        assert "422" in result.error
+        assert result.details.get("detail") is not None

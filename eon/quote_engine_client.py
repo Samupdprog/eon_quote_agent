@@ -10,6 +10,10 @@ from .config import QUOTE_ENGINE_API_URL
 class QuoteEngineError(Exception):
     """Error genérico del cliente."""
 
+    def __init__(self, message: str, details: dict | None = None) -> None:
+        super().__init__(message)
+        self.details: dict = details or {}
+
 
 class QuoteNotFoundError(QuoteEngineError):
     """El presupuesto solicitado no existe en el motor."""
@@ -24,6 +28,21 @@ class QuoteEngineClient:
     # Helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _check_http_error(r: httpx.Response, path: str) -> None:
+        """Convierte HTTPStatusError en QuoteEngineError con details de FastAPI."""
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            try:
+                details = exc.response.json()
+            except Exception:
+                details = {}
+            raise QuoteEngineError(
+                f"Error HTTP {exc.response.status_code} en {path}",
+                details=details,
+            ) from exc
+
     def _get(self, path: str, params: dict | None = None) -> Any:
         url = f"{self._base}{path}"
         try:
@@ -36,7 +55,7 @@ class QuoteEngineClient:
             raise QuoteEngineError("El motor tardó demasiado en responder.") from exc
         if r.status_code == 404:
             raise QuoteNotFoundError(f"Recurso no encontrado: {path}")
-        r.raise_for_status()
+        self._check_http_error(r, path)
         return r.json()
 
     def _post(self, path: str, body: dict | None = None) -> Any:
@@ -51,7 +70,7 @@ class QuoteEngineClient:
             raise QuoteEngineError("El motor tardó demasiado en responder.") from exc
         if r.status_code == 404:
             raise QuoteNotFoundError(f"Recurso no encontrado: {path}")
-        r.raise_for_status()
+        self._check_http_error(r, path)
         return r.json()
 
     # ------------------------------------------------------------------

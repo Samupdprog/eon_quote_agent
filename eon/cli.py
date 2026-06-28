@@ -29,7 +29,12 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    result = handle_user_request(args.text, files=args.files)
+
+    try:
+        result = handle_user_request(args.text, files=args.files)
+    except Exception as exc:
+        print(f"\n[EON] Error inesperado: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if args.output_json:
         print(json.dumps(result.__dict__, ensure_ascii=False, default=str, indent=2))
@@ -46,6 +51,11 @@ def main() -> None:
             print(f"    · [{q.field}] {q.question}")
     if result.error:
         print(f"\n  Error: {result.error}", file=sys.stderr)
+        if result.details:
+            print(
+                f"  Detalles: {json.dumps(result.details, ensure_ascii=False, default=str, indent=4)}",
+                file=sys.stderr,
+            )
     if result.data and not result.questions:
         print(f"\n  Datos:\n{json.dumps(result.data, ensure_ascii=False, default=str, indent=4)}")
 
