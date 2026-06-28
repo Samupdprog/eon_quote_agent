@@ -1,51 +1,63 @@
-# EON — Orquestador de Presupuestos Index Clima
+# EON/OpenClaw v0.2.1 - Operativa Index Clima
 
-EON es el orquestador inteligente de Index Clima. Recibe peticiones del usuario en lenguaje natural, interpreta la intención y delega toda la lógica de presupuestos al motor `index_quote_engine`.
+Este repositorio contiene la capa local de herramientas de EON para Index Clima. El README v0.1 describia EON como si este repositorio fuera todo el agente; en v0.2.1 la arquitectura queda separada asi:
 
-**EON no calcula precios. EON no toca JSONs directamente. EON orquesta.**
+- **OpenClaw/EON** es el agente vivo con IA, audio, contexto operativo y acceso a Obsidian.
+- **`eon_quote_agent`** es la capa local de herramientas, CLI y reglas de orquestacion.
+- **`index_quote_engine`** es el motor de calculo y validacion de presupuestos.
+- **Obsidian** es la memoria principal de conocimiento interno.
 
----
+EON no calcula precios manualmente. EON no inventa datos. EON no toca facturas. EON usa el motor y deja acciones reales de Holded bloqueadas hasta aprobacion humana.
 
-## Qué hace EON v0.1
+## Documentos raiz
 
-- Parsea intenciones en español (crear, buscar, resumir, informar, exportar, archivar)
-- Detecta IDs de presupuesto tipo `PRE-2026-0001`
-- Llama a `index_quote_engine` vía HTTP
-- Devuelve resúmenes claros
-- Pide los datos que falten antes de actuar
+Antes de operar como EON/OpenClaw, leer:
 
-## Qué NO hace todavía
+- `OPENCLAW_EON_SYSTEM.md`
+- `EON_SOUL.md`
+- `EON_BOOT_PROTOCOL.md`
+- `EON_SECURITY_RULES.md`
+- `TOOLS.md`
+- `OBSIDIAN_CONTEXT_SUMMARY.md`
+- `EON_DECISION_MATRIX.md`
+- `EON_RUNTIME_CHECKLIST.md`
 
-- Lectura real de PDF o audio
-- Conexión real a Holded
-- Base de datos propia
-- Frontend o login
-- WhatsApp
-- IA generativa (el parser es por reglas)
-- Agentes complejos
+## Que hace esta capa local
 
----
+- Parsea intenciones en espanol para buscar, resumir y crear borradores de presupuesto.
+- Llama a `index_quote_engine` via HTTP.
+- Usa el CLI correcto desde el entorno virtual del proyecto.
+- Devuelve resumen claro y marca datos pendientes.
+- Prepara informacion revisable para Holded sin ejecutar acciones reales salvo aprobacion humana.
 
-## Conexión a `index_quote_engine`
+## Que no hace
 
-EON espera que `index_quote_engine` esté corriendo en la URL definida en `.env`.
+- No calcula importes, margenes, impuestos, subtotales ni totales manualmente.
+- No inventa precios, clientes, CIF/NIF, direcciones, IDs ni datos fiscales.
+- No crea, modifica, convierte, envia ni automatiza facturas.
+- No ejecuta Holded real sin aprobacion humana previa y explicita.
+- No modifica el vault de Obsidian salvo peticion explicita.
 
-Endpoints usados:
+## Conexion a `index_quote_engine`
 
-| Acción | Endpoint |
-|--------|----------|
+EON espera que `index_quote_engine` este corriendo en `http://127.0.0.1:8000` o en la URL definida en `.env`.
+
+Comprobacion:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/eon/tools
+```
+
+Endpoints locales verificados/documentados en esta version:
+
+| Accion | Endpoint |
+|---|---|
 | Herramientas disponibles | `GET /eon/tools` |
 | Buscar presupuestos | `GET /eon/search` |
-| Obtener presupuesto | `GET /eon/quotes/{id}` |
-| Resumen | `GET /eon/quotes/{id}/summary` |
-| Calcular | `POST /eon/quotes/{id}/calculate` |
-| Workflow completo | `POST /workflow/quote` |
-| Informe | `GET /eon/quotes/{id}/report` |
-| Informe HTML | `GET /eon/quotes/{id}/report/html` |
-| Export Holded | `GET /eon/quotes/{id}/export/holded` |
-| Archivar | `POST /eon/quotes/{id}/archive` |
+| Validar borrador | `POST /budgets/validate` |
+| Recalcular presupuesto | `POST /budgets/recalculate` |
 
----
+Los endpoints de Holded no se asumen disponibles hasta prueba real documentada y aprobacion humana.
 
 ## Variables de entorno
 
@@ -57,46 +69,42 @@ EON_DEFAULT_CREATED_BY=EON
 EON_DEFAULT_SOURCE=eon
 ```
 
----
+## Instalacion
 
-## Instalación
-
-```bash
-pip install -e ".[dev]"
+```powershell
+Set-Location C:\Users\Samuel\eon_quote_agent
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
-
----
 
 ## CLI
 
-```bash
+Usar siempre el Python del entorno del proyecto:
+
+```powershell
+Set-Location C:\Users\Samuel\eon_quote_agent
+
 # Buscar presupuestos
-python -m eon.cli "busca presupuestos de Citanias"
+.\.venv\Scripts\python.exe -m eon.cli "busca presupuestos"
 
 # Resumir un presupuesto
-python -m eon.cli "resúmeme PRE-2026-0001"
+.\.venv\Scripts\python.exe -m eon.cli "resumeme PRE-2026-0001"
 
 # Crear presupuesto con archivo JSON
-python -m eon.cli "hazme un presupuesto para Citanias" --file data/input.json
+.\.venv\Scripts\python.exe -m eon.cli "hazme un presupuesto para Citanias" --file data/input.json
 
 # Salida JSON
-python -m eon.cli "genera informe de PRE-2026-0001" --json
+.\.venv\Scripts\python.exe -m eon.cli "genera informe de PRE-2026-0001" --json
 ```
-
----
 
 ## Tests
 
-```bash
-pytest
+```powershell
+.\.venv\Scripts\python.exe -m pytest
 ```
 
----
+## Proximos pasos
 
-## Próximos pasos
-
-- Parser con LLM (Claude) para intención más robusta
-- Lectura de PDFs de proveedores
-- Conexión real a Holded con flujo de confirmación humana
-- Integración de voz/audio
-- Panel de seguimiento de presupuestos abiertos
+- Lectura de PDFs de proveedores.
+- Conexion real a Holded con flujo de confirmacion humana.
+- Panel de seguimiento de presupuestos abiertos.
+- Integracion de voz/audio desde OpenClaw.
